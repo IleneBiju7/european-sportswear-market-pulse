@@ -1,0 +1,6 @@
+.DS_Store
+__pycache__/
+# Licensed data (Euromonitor, Statista) is never committed
+data/*
+!data/README.md
+*.pbix

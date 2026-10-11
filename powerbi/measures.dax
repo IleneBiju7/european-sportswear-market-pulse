@@ -1,0 +1,123 @@
+// European Sportswear Market Pulse: DAX measures (table _Measures)
+// Exported from the Power BI semantic model. Shares are value-weighted: brand value / market value.
+
+[Market Size €m] = SUM ( market_size_long[market_size_eur_m] )
+
+[Market Size Real €m] = SUM ( market_size_long[market_size_real_eur_m] )
+
+[Brand Value €m] = SUM ( brand_shares_long[brand_value_eur_m] )
+
+[Brand Share %] = DIVIDE ( [Brand Value €m], [Market Size €m] )
+
+[adidas Share %] = CALCULATE ( [Brand Share %], dim_brand[brand] = "adidas" )
+
+[Nike Share %] = CALCULATE ( [Brand Share %], dim_brand[brand] = "Nike" )
+
+[adidas vs Nike gap (pts)] = ( [adidas Share %] - [Nike Share %] ) * 100
+
+[Value of 1 share point €m] = [Market Size €m] / 100
+
+[Online Share %] =
+    DIVIDE (
+        CALCULATE ( SUM ( channel_mix_long[channel_value_eur_m] ),
+                    channel_mix_long[channel] = "Retail E-Commerce" ),
+        [Market Size €m]
+    )
+
+[Real CAGR 2019-25] =
+    VAR v2019 = CALCULATE ( [Market Size Real €m], dim_year[year] = 2019 )
+    VAR v2025 = CALCULATE ( [Market Size Real €m], dim_year[year] = 2025 )
+    VAR r = ROUND ( ( DIVIDE ( v2025, v2019 ) ^ ( 1 / 6 ) ) - 1, 3 )
+    RETURN IF ( r = 0, 0, r )
+
+[Brand Share 2025 %] = CALCULATE ( [Brand Share %], dim_year[year] = 2025 )
+
+[Brand Share change 2023-25 (pts)] =
+    VAR d = ( CALCULATE ( [Brand Share %], dim_year[year] = 2025 ) - CALCULATE ( [Brand Share %], dim_year[year] = 2023 ) ) * 100
+    VAR r = ROUND ( d, 1 )
+    RETURN IF ( NOT ISBLANK ( d ), IF ( r = 0, 0, r ) )
+
+[adidas Share 2025 %] = CALCULATE ( [adidas Share %], dim_year[year] = 2025 )
+
+[adidas Share change 2023-25 (pts)] =
+    VAR d = ( CALCULATE ( [adidas Share %], dim_year[year] = 2025 ) - CALCULATE ( [adidas Share %], dim_year[year] = 2023 ) ) * 100
+    VAR r = ROUND ( d, 1 )
+    RETURN IF ( NOT ISBLANK ( d ), IF ( r = 0, 0, r ) )
+
+[Gap 2025 (pts)] = CALCULATE ( [adidas vs Nike gap (pts)], dim_year[year] = 2025 )
+
+[Gap 2023 (pts)] = CALCULATE ( [adidas vs Nike gap (pts)], dim_year[year] = 2023 )
+
+[Countries adidas leads 2025] = CALCULATE ( COUNTROWS ( FILTER ( VALUES ( dim_geography[geography] ), [adidas vs Nike gap (pts)] > 0 ) ), REMOVEFILTERS ( dim_geography ), dim_geography[geo_type] = "Country", dim_year[year] = 2025 )
+
+[Countries adidas leads 2023] = CALCULATE ( COUNTROWS ( FILTER ( VALUES ( dim_geography[geography] ), [adidas vs Nike gap (pts)] > 0 ) ), REMOVEFILTERS ( dim_geography ), dim_geography[geo_type] = "Country", dim_year[year] = 2023 )
+
+[Countries tracked] = CALCULATE ( DISTINCTCOUNT ( brand_shares_long[geography] ), REMOVEFILTERS ( dim_geography ), dim_geography[geo_type] = "Country" )
+
+[adidas leads label] = [Countries adidas leads 2025] & " of " & [Countries tracked]
+
+[Value of 1 share point 2025 €m] = CALCULATE ( [Value of 1 share point €m], dim_year[year] = 2025 )
+
+[Market Size 2025 €m] = CALCULATE ( [Market Size €m], dim_year[year] = 2025 )
+
+[Market Real Actual €m] = CALCULATE ( [Market Size Real €m], dim_year[data_status] = "Actual" )
+
+[Market Real Forecast €m] = IF ( MAX ( dim_year[year] ) >= 2025, [Market Size Real €m] )
+
+[Nominal CAGR 2019-25] = VAR v2019 = CALCULATE ( [Market Size €m], dim_year[year] = 2019 ) VAR v2025 = CALCULATE ( [Market Size €m], dim_year[year] = 2025 ) RETURN DIVIDE ( v2025, v2019 ) ^ ( 1 / 6 ) - 1
+
+[Real CAGR 2025-30] = VAR v2025 = CALCULATE ( [Market Size Real €m], dim_year[year] = 2025 ) VAR v2030 = CALCULATE ( [Market Size Real €m], dim_year[year] = 2030 ) RETURN DIVIDE ( v2030, v2025 ) ^ ( 1 / 5 ) - 1
+
+[Channel Value €m] = SUM ( channel_mix_long[channel_value_eur_m] )
+
+[Online Share 2019 %] = CALCULATE ( [Online Share %], dim_year[year] = 2019 )
+
+[Online Share 2025 %] = CALCULATE ( [Online Share %], dim_year[year] = 2025 )
+
+[Search Index] = AVERAGE ( google_trends_long[index_common] )
+
+[Statista Revenue €m] = SUM ( statista_market_long[revenue_eur_m] )
+
+[Statista CAGR 2019-25] = DIVIDE ( CALCULATE ( [Statista Revenue €m], statista_market_long[year] = 2025 ), CALCULATE ( [Statista Revenue €m], statista_market_long[year] = 2019 ) ) ^ ( 1 / 6 ) - 1
+
+[Statista CAGR 2025-30] = DIVIDE ( CALCULATE ( [Statista Revenue €m], statista_market_long[year] = 2030 ), CALCULATE ( [Statista Revenue €m], statista_market_long[year] = 2025 ) ) ^ ( 1 / 5 ) - 1
+
+[Statista Online Share %] = AVERAGE ( statista_market_long[online_share_pct] ) / 100
+
+[adidas growth quarters since 2024] = CALCULATE ( COUNTROWS ( company_sales_quarterly ), company_sales_quarterly[company] = "adidas", company_sales_quarterly[growth_cn_pct] > 0, company_sales_quarterly[year] >= 2024 )
+
+[adidas Europe sales 2025 €m] = CALCULATE ( SUM ( company_sales_quarterly[net_sales_m] ), company_sales_quarterly[segment] = "adidas Europe", company_sales_quarterly[year] = 2025 )
+
+[Search Index 3m avg] =
+    VAR m = MAX ( google_trends_long[month] )
+    RETURN
+        CALCULATE (
+            AVERAGE ( google_trends_long[index_common] ),
+            FILTER (
+                ALL ( google_trends_long[month] ),
+                google_trends_long[month] > EDATE ( m, -3 ) && google_trends_long[month] <= m
+            )
+        )
+
+[Subtitle market share] = SELECTEDVALUE ( dim_geography[geography], "Selected markets" ) & "  ·  % of sportswear retail value"
+
+[Subtitle top brands] = SELECTEDVALUE ( dim_geography[geography], "Selected markets" )
+
+[Subtitle channels] = SELECTEDVALUE ( dim_geography[geography], "Selected markets" ) & "  ·  % of retail value by channel"
+
+[Nominal index (2019 = 100)] = DIVIDE ( [Market Size €m], CALCULATE ( [Market Size €m], dim_year[year] = 2019 ) ) * 100
+
+[Real index (2019 = 100)] = DIVIDE ( [Market Real Actual €m], CALCULATE ( [Market Size Real €m], dim_year[year] = 2019 ) ) * 100
+
+[Real forecast index (2019 = 100)] = DIVIDE ( [Market Real Forecast €m], CALCULATE ( [Market Size Real €m], dim_year[year] = 2019 ) ) * 100
+
+[Subtitle outlook] =
+    VAR n = DIVIDE ( CALCULATE ( [Market Size €m], dim_year[year] = 2025 ), CALCULATE ( [Market Size €m], dim_year[year] = 2019 ) ) - 1
+    VAR r = ROUND ( DIVIDE ( CALCULATE ( [Market Size Real €m], dim_year[year] = 2025 ), CALCULATE ( [Market Size Real €m], dim_year[year] = 2019 ) ) - 1, 3 )
+    RETURN
+        SELECTEDVALUE ( dim_geography[geography], "Selected markets" ) & "  ·  index, 2019 = 100  ·  2019 to 2025: nominal "
+            & FORMAT ( n, "+0.0%;-0.0%" ) & ", real " & FORMAT ( IF ( r = 0, 0, r ), "+0.0%;-0.0%;0.0%" )
+
+[Subtitle search] = SELECTEDVALUE ( dim_geography[geography], "Selected markets" ) & "  ·  3-month average; 100 = Samba’s peak month"
+
+[Subtitle statista] = "Statista region: " & SELECTEDVALUE ( statista_market_long[region], "Europe" ) & "  ·  revenue growth per year"
